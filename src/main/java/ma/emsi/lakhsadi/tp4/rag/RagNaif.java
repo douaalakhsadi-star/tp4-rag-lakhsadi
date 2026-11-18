@@ -7,10 +7,15 @@ import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.bgesmallenv15.BgeSmallEnV15EmbeddingModel;
 import dev.langchain4j.model.google.genai.GoogleGenAiChatModel;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 
@@ -53,5 +58,26 @@ public class RagNaif {
         magasin.addAll(embeddings, segments);
 
         System.out.println("Passages et embeddings enregistrés en mémoire.");
+
+        ContentRetriever recuperateur = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(magasin)
+                .embeddingModel(modeleEmbedding)
+                .maxResults(2)
+                .minScore(0.5)
+                .build();
+
+        ChatMemory memoire = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(modele)
+                .chatMemory(memoire)
+                .contentRetriever(recuperateur)
+                .build();
+
+        String question = "Quelle est la signification de 'RAG' ; à quoi ça sert ?";
+        String reponse = assistant.chat(question);
+
+        System.out.println("Question : " + question);
+        System.out.println("Réponse : " + reponse);
     }
 }
