@@ -11,6 +11,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.bgesmallenv15.BgeSmallEnV15EmbeddingModel;
 import dev.langchain4j.model.google.genai.GoogleGenAiChatModel;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 
 import java.util.List;
 
@@ -46,5 +48,10 @@ public class RagNaif {
                 .content();
 
         System.out.println("Nombre d'embeddings : " + embeddings.size());
+
+        EmbeddingStore<TextSegment> magasin = new InMemoryEmbeddingStore<>();
+        magasin.addAll(embeddings, segments);
+
+        System.out.println("Passages et embeddings enregistrés en mémoire.");
     }
 }
