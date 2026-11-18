@@ -5,8 +5,11 @@ import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.loader.ClassPathDocumentLoader;
 import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.bgesmallenv15.BgeSmallEnV15EmbeddingModel;
 import dev.langchain4j.model.google.genai.GoogleGenAiChatModel;
 
 import java.util.List;
@@ -35,5 +38,13 @@ public class RagNaif {
         List<TextSegment> segments = splitter.split(document);
 
         System.out.println("Nombre de passages : " + segments.size());
+
+        EmbeddingModel modeleEmbedding = new BgeSmallEnV15EmbeddingModel();
+
+        List<Embedding> embeddings = modeleEmbedding
+                .embedAll(segments)
+                .content();
+
+        System.out.println("Nombre d'embeddings : " + embeddings.size());
     }
 }
