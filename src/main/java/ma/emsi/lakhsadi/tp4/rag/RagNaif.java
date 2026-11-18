@@ -20,6 +20,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 
 import java.util.List;
+import java.util.Scanner;
 
 public class RagNaif {
 
@@ -74,10 +75,30 @@ public class RagNaif {
                 .contentRetriever(recuperateur)
                 .build();
 
-        String question = "Quelle est la signification de 'RAG' ; à quoi ça sert ?";
-        String reponse = assistant.chat(question);
+        try (Scanner scanner = new Scanner(System.in)) {
+            while (true) {
+                System.out.println(
+                        "Posez votre question, ou tapez fin pour quitter :"
+                );
 
-        System.out.println("Question : " + question);
-        System.out.println("Réponse : " + reponse);
+                if (!scanner.hasNextLine()) {
+                    break;
+                }
+
+                String question = scanner.nextLine().trim();
+
+                if (question.equalsIgnoreCase("fin")) {
+                    break;
+                }
+
+                if (question.isBlank()) {
+                    continue;
+                }
+
+                String reponse = assistant.chat(question);
+                System.out.println("Réponse : " + reponse);
+                System.out.println();
+            }
+        }
     }
 }
