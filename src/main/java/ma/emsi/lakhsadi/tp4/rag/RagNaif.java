@@ -31,6 +31,7 @@ public class RagNaif {
                 .apiKey(cle)
                 .modelName("gemini-3.5-flash-lite")
                 .temperature(0.7)
+                .logRequestsAndResponses(true)
                 .build();
 
         Document document = ClassPathDocumentLoader.loadDocument(
