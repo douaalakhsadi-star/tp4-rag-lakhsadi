@@ -13,9 +13,13 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.bgesmallenv15.BgeSmallEnV15EmbeddingModel;
 import dev.langchain4j.model.google.genai.GoogleGenAiChatModel;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 
@@ -60,6 +64,13 @@ public class RagNaif {
         magasin.addAll(embeddings, segments);
 
         System.out.println("Passages et embeddings enregistrés en mémoire.");
+        System.out.println("=== Passages enregistrés ===");
+
+        for (int i = 0; i < segments.size(); i++) {
+            System.out.println("Passage " + (i + 1));
+            System.out.println(segments.get(i).text());
+            System.out.println();
+        }
 
         ContentRetriever recuperateur = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(magasin)
@@ -94,6 +105,57 @@ public class RagNaif {
 
                 if (question.isBlank()) {
                     continue;
+                }
+
+                List<Content> contenus = recuperateur.retrieve(
+                        new Query(question)
+                );
+
+                System.out.println(
+                        "=== Passages retrouvés pour la question ==="
+                );
+
+                for (int i = 0; i < contenus.size(); i++) {
+                    System.out.println("Résultat " + (i + 1));
+                    System.out.println(contenus.get(i).textSegment().text());
+                    System.out.println();
+                }
+
+                if (contenus.isEmpty()) {
+                    System.out.println(
+                            "Aucun passage ne satisfait le seuil de similarité."
+                    );
+                }
+
+                // Recherche directe pour obtenir aussi les scores.
+                Embedding embeddingQuestion = modeleEmbedding
+                        .embed(question)
+                        .content();
+
+                EmbeddingSearchRequest recherche = EmbeddingSearchRequest.builder()
+                        .queryEmbedding(embeddingQuestion)
+                        .maxResults(2)
+                        .minScore(0.5)
+                        .build();
+
+                List<EmbeddingMatch<TextSegment>> resultats = magasin
+                        .search(recherche)
+                        .matches();
+
+                System.out.println(
+                        "=== Passages et scores de similarité ==="
+                );
+
+                for (EmbeddingMatch<TextSegment> resultat : resultats) {
+                    System.out.printf("Score : %.4f%n", resultat.score());
+                    System.out.println(resultat.embedded().text());
+                    System.out.println();
+                }
+
+                if (resultats.isEmpty()) {
+                    System.out.println(
+                            "Aucun passage avec un score supérieur ou égal à 0,5."
+                    );
                 }
 
                 String reponse = assistant.chat(question);
