@@ -13,10 +13,13 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.bgesmallenv15.BgeSmallEnV15EmbeddingModel;
 import dev.langchain4j.model.google.genai.GoogleGenAiChatModel;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.rag.query.transformer.CompressingQueryTransformer;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -81,10 +84,19 @@ public class RagNaif {
 
         ChatMemory memoire = MessageWindowChatMemory.withMaxMessages(10);
 
+        // Reformuler la question en utilisant l'historique.
+        CompressingQueryTransformer transformateur =
+                new CompressingQueryTransformer(modele);
+
+        RetrievalAugmentor augmentateur = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(transformateur)
+                .contentRetriever(recuperateur)
+                .build();
+
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(modele)
                 .chatMemory(memoire)
-                .contentRetriever(recuperateur)
+                .retrievalAugmentor(augmentateur)
                 .build();
 
         try (Scanner scanner = new Scanner(System.in)) {
@@ -107,12 +119,13 @@ public class RagNaif {
                     continue;
                 }
 
+                // Diagnostic sur la question originale, sans transformation.
                 List<Content> contenus = recuperateur.retrieve(
                         new Query(question)
                 );
 
                 System.out.println(
-                        "=== Passages retrouvés pour la question ==="
+                        "=== Diagnostic : passages pour la question originale ==="
                 );
 
                 for (int i = 0; i < contenus.size(); i++) {
@@ -127,7 +140,6 @@ public class RagNaif {
                     );
                 }
 
-                // Recherche directe pour obtenir aussi les scores.
                 Embedding embeddingQuestion = modeleEmbedding
                         .embed(question)
                         .content();
@@ -143,7 +155,7 @@ public class RagNaif {
                         .matches();
 
                 System.out.println(
-                        "=== Passages et scores de similarité ==="
+                        "=== Diagnostic : scores pour la question originale ==="
                 );
 
                 for (EmbeddingMatch<TextSegment> resultat : resultats) {
@@ -158,6 +170,7 @@ public class RagNaif {
                     );
                 }
 
+                // L'assistant utilise le transformateur avant la récupération.
                 String reponse = assistant.chat(question);
                 System.out.println("Réponse : " + reponse);
                 System.out.println();
