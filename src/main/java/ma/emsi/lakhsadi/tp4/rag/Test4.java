@@ -16,7 +16,7 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.content.retriever.WebSearchContentRetriever;
-import dev.langchain4j.rag.query.router.DefaultQueryRouter;
+import dev.langchain4j.rag.query.router.LanguageModelQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -24,7 +24,9 @@ import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class Test4 {
@@ -70,7 +72,6 @@ public class Test4 {
                 "rag.pdf : " + segments.size() + " passages enregistrés."
         );
 
-        // Première source : le PDF.
         ContentRetriever recuperateurPdf =
                 EmbeddingStoreContentRetriever.builder()
                         .embeddingStore(magasin)
@@ -79,7 +80,6 @@ public class Test4 {
                         .minScore(0.5)
                         .build();
 
-        // Deuxième source : le Web via Tavily.
         WebSearchEngine moteurWeb = TavilyWebSearchEngine.builder()
                 .apiKey(cleTavily)
                 .build();
@@ -88,11 +88,38 @@ public class Test4 {
                 .webSearchEngine(moteurWeb)
                 .build();
 
-        // Ce routeur consulte les deux sources à chaque question.
-        QueryRouter routeur = new DefaultQueryRouter(
+        // Ancien routage : les deux sources étaient toujours consultées.
+        /*
+        QueryRouter routeur =
+                new dev.langchain4j.rag.query.router.DefaultQueryRouter(
+                        recuperateurPdf,
+                        recuperateurWeb
+                );
+        */
+
+        // Nouveau routage : le modèle choisit les sources adaptées.
+        Map<ContentRetriever, String> sources = new LinkedHashMap<>();
+
+        sources.put(
                 recuperateurPdf,
-                recuperateurWeb
+                "Support de cours sur le RAG, le fine-tuning, les embeddings, "
+                        + "les bases vectorielles et LangChain4j. "
+                        + "À utiliser pour les questions sur ces notions "
+                        + "ou sur ce support de cours. "
+                        + "Ne contient pas de résultats sportifs "
+                        + "ni d'actualités."
         );
+
+        sources.put(
+                recuperateurWeb,
+                "Recherche sur le Web pour les actualités, "
+                        + "les événements récents, les résultats sportifs "
+                        + "et les sujets extérieurs au support de cours. "
+                        + "À utiliser aussi pour les informations récentes "
+                        + "sur l'IA absentes du support."
+        );
+
+        QueryRouter routeur = new LanguageModelQueryRouter(modele, sources);
 
         RetrievalAugmentor augmentateur = DefaultRetrievalAugmentor.builder()
                 .queryRouter(routeur)
